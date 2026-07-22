@@ -52,9 +52,6 @@ static void Tools(HANDLE process, DWORD static_address) {
                 WriteFloat(process, (void*)(player_base + PLAYER_MAX_GROUND_SPEED), 720.0f);
             }
         }
-        else if (player_base) {
-            WriteFloat(process, (void*)(player_base + PLAYER_MAX_GROUND_SPEED), 720.0f);
-        }
 
         static bool beamer = false;
         if (focused && (GetAsyncKeyState('B') & 0x8000) && player_base) {
