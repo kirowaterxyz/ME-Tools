@@ -19,7 +19,7 @@ jobs:
 
     - name: Build ME-Tools x86 Release
       run: |
-        msbuild ME-Tools.sln /p:Configuration=Release /p:Platform=Win32 /m
+        msbuild ME-Tools.slnx /p:Configuration=Release /p:Platform=Win32 /m
 
     - name: Upload executable
       uses: actions/upload-artifact@v4
