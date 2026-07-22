@@ -1,0 +1,53 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Build ME-Tools x86 Release
+      run: |
+        msbuild ME-Tools.slnx /p:Configuration=Release /p:Platform=x86 /m
+
+    - name: Prepare release files
+      shell: pwsh
+      run: |
+        $exe = Get-ChildItem -Recurse -Filter ME-Tools.exe | Select-Object -First 1
+
+        Copy-Item $exe.FullName ./ME-Tools.exe
+
+        $hash = (Get-FileHash ./ME-Tools.exe -Algorithm SHA256).Hash.ToLower()
+        $commit = git rev-parse HEAD
+
+        @"
+This release has been built by Github Actions
+
+Build SHA256:
+
+$hash  ME-Tools.exe
+
+Full Commit Hash:
+
+$commit
+"@ | Out-File release_notes.txt
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          ME-Tools.exe
+        body_path: release_notes.txt
