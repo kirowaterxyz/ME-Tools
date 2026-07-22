@@ -1,0 +1,29 @@
+name: C++ Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Build ME-Tools x86 Release
+      run: |
+        msbuild ME-Tools.sln /p:Configuration=Release /p:Platform=Win32 /m
+
+    - name: Upload executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: ME-Tools-x86
+        path: |
+          **/Release/*.exe
