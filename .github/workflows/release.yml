@@ -1,6 +1,125 @@
 name: Release Build
 
 on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    name: Build Release
+
+    outputs:
+      full_sha: ${{ steps.var.outputs.full_sha }}
+      short_sha: ${{ steps.var.outputs.short_sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v3
+
+      - name: Build
+        run: |
+          msbuild ME-Tools.sln /p:Configuration=Release /p:Platform=x64
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: ME-Tools
+          path: |
+            x64/Release/*.exe
+            x64/Release/*.dll
+
+      - name: Generate Build Info
+        id: var
+        shell: pwsh
+        run: |
+          echo "full_sha=$(git rev-parse HEAD)" >> $env:GITHUB_OUTPUT
+          echo "short_sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
+
+
+  release:
+    runs-on: ubuntu-latest
+    name: Create Release
+    needs: build
+
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: ME-Tools
+
+      - name: Display Files
+        run: |
+          ls -R
+
+      - name: Generate SHA256
+        id: sha
+        run: |
+          sha256sum *.exe > sha256.checksum
+          echo "build_sha=$(cat sha256.checksum)" >> $GITHUB_OUTPUT
+          cat sha256.checksum
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ME-Tools [${{ needs.build.outputs.short_sha }}]
+          tag_name: ${{ github.ref_name }}
+
+          body: |
+            **This release has been built by GitHub Actions**
+
+            Commit:
+            ```
+            ${{ needs.build.outputs.full_sha }}
+            ```
+
+            Build SHA256:
+            ```
+            ${{ steps.sha.outputs.build_sha }}
+            ```
+
+            ## Verification
+
+            To verify the integrity of this build:
+
+            1. Download the executable.
+            2. Generate SHA256 checksum:
+            
+            ```
+            sha256sum ME-Tools.exe
+            ```
+
+            3. Compare it with the checksum above.
+
+            ## Information
+
+            - Configuration: Release
+            - Platform: x64
+            - Compiler: MSVC
+            - Automated build: GitHub Actions
+
+            Source:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          files: |
+            *.exe
+            *.dll
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}name: Release Build
+
+on:
   push:
     tags:
       - "v*"
