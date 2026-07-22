@@ -1,53 +1,3 @@
-name: Release Build
-
-on:
-  workflow_dispatch:
-  push:
-    tags:
-      - "v*"
-
-concurrency:
-  group: release
-  cancel-in-progress: true
-
-jobs:
-  build:
-    runs-on: windows-latest
-    name: Build Release
-
-    outputs:
-      full_sha: ${{ steps.var.outputs.full_sha }}
-      short_sha: ${{ steps.var.outputs.short_sha }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          submodules: recursive
-
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v3
-
-      - name: Build
-        run: |
-          msbuild ME-Tools.sln /p:Configuration=Release /p:Platform=x64
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: ME-Tools
-          path: |
-            x64/Release/*.exe
-            x64/Release/*.dll
-
-      - name: Generate Build Info
-        id: var
-        shell: pwsh
-        run: |
-          echo "full_sha=$(git rev-parse HEAD)" >> $env:GITHUB_OUTPUT
-          echo "short_sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
-
-
   release:
     runs-on: ubuntu-latest
     name: Create Release
@@ -58,10 +8,6 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           name: ME-Tools
-
-      - name: Display Files
-        run: |
-          ls -R
 
       - name: Generate SHA256
         id: sha
@@ -75,7 +21,6 @@ jobs:
         with:
           name: ME-Tools [${{ needs.build.outputs.short_sha }}]
           tag_name: ${{ github.ref_name }}
-
           body: |
             **This release has been built by GitHub Actions**
 
@@ -88,19 +33,6 @@ jobs:
             ```
             ${{ steps.sha.outputs.build_sha }}
             ```
-
-            ## Verification
-
-            To verify the integrity of this build:
-
-            1. Download the executable.
-            2. Generate SHA256 checksum:
-            
-            ```
-            sha256sum ME-Tools.exe
-            ```
-
-            3. Compare it with the checksum above.
 
             ## Information
 
@@ -115,39 +47,5 @@ jobs:
           files: |
             *.exe
             *.dll
-
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}name: Release Build
-
-on:
-  push:
-    tags:
-      - "v*"
-
-jobs:
-  build:
-    runs-on: windows-latest
-
-    permissions:
-      contents: write
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
-
-    - name: Build ME-Tools x86 Release
-      run: |
-        msbuild ME-Tools.slnx /p:Configuration=Release /p:Platform=x86 /m
-    - name: Prepare release files
-      shell: pwsh
-      run: |
-        $exe = Get-ChildItem -Recurse -Filter ME-Tools.exe | Select-Object -First 1
-        Copy-Item $exe.FullName ./ME-Tools.exe
-
-        $hash = (Get-FileHash ./ME-Tools.exe -Algorithm SHA256).Hash.ToLower()
-        $commit = git rev-parse HEAD
-
-        "This release has been built by Github Actions`n`nBuild SHA256:`n`n$hash  ME-Tools.exe`n`nFull Commit Hash:`n`n$commit" | Out-File release_notes.txt
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
